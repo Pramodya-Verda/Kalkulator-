@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalkulator Web</title>
+  <style>
+    :root{
+      --blue: #1a73ff;
+      --muted-white: rgba(255,255,255,0.45);
+    }
+    *{box-sizing:border-box}
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: url('Backback.jpeg') center/cover no-repeat;
+      font-family: Arial, sans-serif;
+    }
+
+    .calculator {
+      width: 320px;
+      max-width: calc(100% - 32px);
+      backdrop-filter: blur(18px);
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    /* output: transparent, inside card */
+    .output {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      height: 90px;
+      border-radius: 22px;
+      padding: 18px 20px;
+      font-size: 2rem;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+      margin-bottom: 18px;
+      letter-spacing: 0.02em;
+    }
+
+    .output .small{font-size:0.85rem; color:rgba(0,0,0,0.6); margin-right:8px}
+    .output.dark{color:#fff; background: rgba(255,255,255,0.04)}
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    button {
+      padding: 14px;
+      border: none;
+      border-radius: 16px;
+      font-size: 1.1rem;
+      background: rgba(255, 255, 255, 0.55);
+      color: #000;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.18s ease;
+      backdrop-filter: blur(8px);
+      box-shadow: inset 0 0 8px rgba(255,255,255,0.6), 0 6px 14px rgba(0,0,0,0.08);
+    }
+
+    /* glossy / touch animation */
+    button:hover{transform: translateY(-2px)}
+    button:active{transform: translateY(0) scale(0.98); box-shadow: inset 0 0 14px rgba(255,255,255,0.95)}
+
+    .operator{ color: var(--blue); background: rgba(255,255,255,0.5)}
+    .clear{ color: #e24b4b; background: rgba(255,255,255,0.5)}
+
+    /* equal as circular blue icon */
+    .equal{
+      background: var(--blue);
+      color: #fff;
+      border-radius: 999px;
+      aspect-ratio: 1/1;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 6px 18px rgba(26,115,255,0.35), inset 0 -6px 12px rgba(255,255,255,0.06);
+      font-weight:700;
+    }
+
+    /* mode button (Light/Dark) placed to the right of = */
+    .mode-btn{
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      background: rgba(255,255,255,0.55);
+      display:inline-flex; align-items:center; justify-content:center;
+      box-shadow: inset 0 0 6px rgba(255,255,255,0.6);
+    }
+
+    /* dark mode styles */
+    .dark-mode body{ background: #000 }
+    .dark-mode .calculator{ background: rgba(30,30,30,0.35) }
+    .dark-mode .output{ background: rgba(255,255,255,0.15); color: #fff }
+    .dark-mode button{ background: rgba(255,255,255,0.06); color: #fff; box-shadow: inset 0 0 6px rgba(255,255,255,0.06), 0 6px 14px rgba(0,0,0,0.6)}
+    .dark-mode .operator{ color: #7fb8ff }
+    .dark-mode .equal{ background: #1664d8 }
+    .dark-mode .mode-btn{ background: rgba(255,255,255,0.06) }
+
+    /* responsive (keeps layout tidy on narrow screens) */
+    @media (max-width:420px){
+      .calculator{ width: 92%; padding: 16px }
+      .output{ height:64px; font-size:1.4rem }
+      button{ padding:12px; font-size:1rem }
+      .equal{ aspect-ratio: 1/1 }
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator" role="application">
+    <!-- output (transparent, fits inside card) -->
+    <div id="output" class="output"><span id="value">0</span></div>
+
+    <!-- buttons grid: note the last row has: 0 , = (mode) -->
+    <div class="buttons">
+      <button class="clear">C</button>
+      <button class="operator">%</button>
+      <button class="operator">DEL</button>
+      <button class="operator">÷</button>
+
+      <button>7</button>
+      <button>8</button>
+      <button>9</button>
+      <button class="operator">x</button>
+
+      <button>4</button>
+      <button>5</button>
+      <button>6</button>
+      <button class="operator">-</button>
+
+      <button>1</button>
+      <button>2</button>
+      <button>3</button>
+      <button class="operator">+</button>
+
+      <button>0</button>
+      <button>,</button>
+      <button class="equal">=</button>
+      <button id="modeToggle" class="mode-btn">Dark</button>
+    </div>
+  </div>
+
+  <script>
+    const outputEl = document.getElementById('value');
+    const buttons = document.querySelectorAll('.buttons button');
+    const modeBtn = document.getElementById('modeToggle');
+
+    // simple display state
+    function setDisplay(v){ outputEl.textContent = v }
+
+    // current expression stored as string
+    let expr = '';
+
+    buttons.forEach(btn => {
+      // mode button handled separately
+      if(btn.id === 'modeToggle') return;
+
+      btn.addEventListener('click', () => {
+        const value = btn.textContent.trim();
+
+        if(value === 'C'){
+          expr = '';
+          setDisplay('0');
+          return;
+        }
+
+        if(value === 'DEL'){
+          expr = expr.slice(0, -1);
+          setDisplay(expr || '0');
+          return;
+        }
+
+        if(value === '='){
+          // evaluate safely: replace symbols then use Function
+          try{
+            let toEval = expr.split('x').join('*').split('÷').join('/').split(',').join('.').split('%').join('/100');
+            const result = Function('return (' + toEval + ')')();
+            expr = (result === Infinity || result === -Infinity) ? 'Error' : String(result);
+            setDisplay(expr);
+          }catch(e){ setDisplay('Error'); expr = ''; }
+          return;
+        }
+
+        // prevent two operators in a row
+        const operators = ['+','-','x','÷','%'];
+        if(operators.includes(value)){
+          if(expr === '' && value !== '%') return; // ignore leading operators except %
+          // replace last char if it's also operator
+          if(operators.includes(expr.slice(-1))) expr = expr.slice(0,-1) + value;
+          else expr += value;
+          setDisplay(expr);
+          return;
+        }
+
+        // comma -> dot stored, but display as comma
+        if(value === ','){
+          expr += '.';
+          setDisplay(expr.replaceAll('.', ','));
+          return;
+        }
+
+        // numbers
+        expr += value;
+        setDisplay(expr);
+      });
+    });
+
+    // mode toggle
+    modeBtn.addEventListener('click', ()=>{
+      document.body.classList.toggle('dark-mode');
+      if(document.body.classList.contains('dark-mode')) modeBtn.textContent = 'Light';
+      else modeBtn.textContent = 'Dark';
+    });
+
+  </script>
+</body>
+</html>
